@@ -6,17 +6,12 @@ const RIGHT = "RIGHT";
 function Game() {
     this.distance = 0;
     this.score = 0;
-    this.speed = 10;
+    this.scrollX = 0;
+    this.speed = 1;
     this.gravityForce = 1.01;
     this.speedMultiplier = 1;
     this.entities = [];
     this.entities.push(new Player());
-    this.entities.push(new Platform(10, 50, 100, 20));
-    this.entities.push(new Platform(0, 120, 100, 20));
-    this.entities.push(new Platform(40, 200, 400, 20));
-    this.entities.push(new Platform(90, 230, 100, 20));
-    this.entities.push(new Platform(20, 350, 100, 20));
-    this.entities.push(new Platform(120, 600, 500, 20));
     this.entities.push(new Platform(720, 600, 500, 20));
     this.entities.push(new Platform(120, 580, 100, 20));
 
@@ -28,70 +23,81 @@ function Game() {
     };
 
     this.update = function() {
-        this.movePlayer(this.entities[0]);
+        this.movePlayer(this.entities.find(e => e.isPlayer));
         this.gravity();
         this.applyForces();
+        this.scroll();
     };
     this.gravity = function() {
         this.entities.forEach((e1) => {
             if (!e1.static) {
                 if (!this.isOnTopOfSomething(e1)) {
-                    var gravityForce = this.entities[0].forces.find(f => f.name == "gravity");
+                    var gravityForce = e1.forces.find(f => f.name == "gravity");
                     if (gravityForce == undefined) {
-                        this.entities[0].forces.push(new Force(DOWN, 1.12, this.gravityForce, 10, 0.02, "gravity"));
+                        e1.forces.push(new Force(DOWN, 1.12, this.gravityForce, 10, 0.02, "gravity"));
                     }
                 }
             }
         });
     };
-    this.applyForces = function() {
-        this.entities.forEach((e1) => {
-            e1.forces.forEach((f) => {
-                f.update();
-                if (f.value > 0) {
-                    switch (f.direction) {
-                        case UP:
-                            e1.y -= f.value;
-                            if (this.collidesWithAnything(e1)) {
-                                while (this.collidesWithAnything(e1)) {
-                                    e1.y += 1;
-                                }
-                                f.value = 0;
-                            }
-                            break;
-                        case DOWN:
-                            e1.y += f.value;
-                            if (this.collidesWithAnything(e1)) {
-                                while (this.collidesWithAnything(e1)) {
-                                    e1.y -= 1;
-                                }
-                                f.value = 0;
-                            }
-                            break;
-                        case LEFT:
-                            e1.x -= f.value;
-                            if (this.collidesWithAnything(e1)) {
-                                while (this.collidesWithAnything(e1)) {
-                                    e1.x += 1;
-                                }
-                                f.value = 0;
-                            }
-                            break;
-                        case RIGHT:
-                            e1.x += f.value;
-                            if (this.collidesWithAnything(e1)) {
-                                while (this.collidesWithAnything(e1)) {
-                                    e1.x -= 1;
-                                }
-                                f.value = 0;
-                            }
-                            break;
-                    }
-                }
-            });
-            e1.forces = e1.forces.filter(f => f.value > 0);
-        });
+    this.scroll = function() {
+        this.scrollX += this.speed;
+        this.entities = this.entities.filter(e => e.isPlayer || e.x + e.width > this.scrollX);
+        if (this.entities.length < 10) {
+            this.spawnNewPlatforms();
+        }
     };
+    this.spawnNewPlatforms = function() {
+            this.entities.push(new Platform(Math.floor(Math.random() * 700 + 300) + this.scrollX, Math.floor(Math.random() * 200 + 400), 200, 20));
+        },
+        this.applyForces = function() {
+            this.entities.forEach((e1) => {
+                e1.forces.forEach((f) => {
+                    f.update();
+                    if (f.value > 0) {
+                        switch (f.direction) {
+                            case UP:
+                                e1.y -= f.value;
+                                if (this.collidesWithAnything(e1)) {
+                                    while (this.collidesWithAnything(e1)) {
+                                        e1.y += 1;
+                                    }
+                                    f.value = 0;
+                                }
+                                break;
+                            case DOWN:
+                                e1.y += f.value;
+                                if (this.collidesWithAnything(e1)) {
+                                    while (this.collidesWithAnything(e1)) {
+                                        e1.y -= 1;
+                                    }
+                                    f.value = 0;
+                                }
+                                break;
+                            case LEFT:
+                                e1.x -= f.value;
+                                if (this.collidesWithAnything(e1)) {
+                                    while (this.collidesWithAnything(e1)) {
+                                        e1.x += 1;
+                                    }
+                                    f.value = 0;
+                                }
+                                break;
+                            case RIGHT:
+                                e1.x += f.value;
+                                if (this.collidesWithAnything(e1)) {
+                                    while (this.collidesWithAnything(e1)) {
+                                        e1.x -= 1;
+                                    }
+                                    f.value = 0;
+                                }
+                                break;
+                        }
+                    }
+                });
+                e1.forces = e1.forces.filter(f => f.value > 0);
+            });
+        };
     this.collidesWithAnything = function(e1) {
         var blocked = false;
         this.entities.forEach((e2) => {
@@ -114,25 +120,25 @@ function Game() {
     };
     this.movePlayer = function(player) {
         if (this.keysPressed.left) {
-            var leftForce = this.entities[0].forces.find(f => f.name == "keyLeft");
+            var leftForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyLeft");
             if (leftForce == undefined) {
-                this.entities[0].forces.push(new Force(LEFT, 1, 0.98, 4, 0.2, "keyLeft"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(LEFT, 1, 0.98, 4, 0.2, "keyLeft"));
             } else {
                 leftForce.value *= player.acceleration;
             }
         }
         if (this.keysPressed.right) {
-            var rightForce = this.entities[0].forces.find(f => f.name == "keyRight");
+            var rightForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyRight");
             if (rightForce == undefined) {
-                this.entities[0].forces.push(new Force(RIGHT, 1, 0.98, 4, 0.2, "keyRight"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(RIGHT, 1, 0.98, 4, 0.2, "keyRight"));
             } else {
                 rightForce.value *= player.acceleration;
             }
         }
         if (this.keysPressed.up && !player.falling()) {
-            var jumpForce = this.entities[0].forces.find(f => f.name == "keyUp");
+            var jumpForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyUp");
             if (jumpForce == undefined) {
-                this.entities[0].forces.push(new Force(UP, 4, 0.98, 20, 1, "keyUp"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(UP, 4, 0.98, 20, 1, "keyUp"));
             } else {
                 jumpForce.value *= player.acceleration;
             }
@@ -187,6 +193,7 @@ function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = tr
     this.height = height;
     this.block = block;
     this.static = static;
+    this.isPlayer = false;
     this.falling = function() {
         return this.forces.filter(f => f.direction == DOWN).length > 0;
     };
@@ -213,6 +220,7 @@ function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "for
 
 function Player() {
     Entity.call(this, 500, 0, 10, 20, true, false);
+    this.isPlayer = true;
     this.acceleration = 1.2;
 }
 
@@ -224,11 +232,11 @@ function Platform(x, y, width, height) {
 function draw(canvas, game) {
     var ctx = canvas.getContext("2d");
     drawBackground(ctx, canvas.width, canvas.height);
-    drawPlayer(ctx, game.entities[0]);
+    drawPlayer(ctx, game.entities.find(e => e.isPlayer), game);
     drawInterface(ctx, game);
     game.entities.forEach((e, i) => {
         if (i > 0) {
-            drawEntity(ctx, e);
+            drawEntity(ctx, e, game);
         }
     });
 }
@@ -238,24 +246,26 @@ function drawBackground(ctx, width, height) {
     ctx.fillRect(0, 0, width, height);
 }
 
-function drawPlayer(ctx, player) {
+function drawPlayer(ctx, player, game) {
     ctx.fillStyle = "#ad2457";
     if (player.falling()) {
         ctx.fillStyle = "#a8329e";
     }
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(player.x - game.scrollX, player.y, player.width, player.height);
 }
 
-function drawEntity(ctx, entity, color = "#1e5210") {
+function drawEntity(ctx, entity, game, color = "#1e5210") {
     ctx.fillStyle = color;
-    ctx.fillRect(entity.x, entity.y, entity.width, entity.height);
+    ctx.fillRect(entity.x - game.scrollX, entity.y, entity.width, entity.height);
 }
 
 function drawInterface(ctx, game) {
     ctx.fillStyle = "black";
     drawTextInRect(ctx, "Forces", 1000, 100, 500, 200);
-    game.entities[0].forces.forEach((f, index) => {
+    game.entities.find(e => e.isPlayer).forces.forEach((f, index) => {
         drawTextInRect(ctx, f.direction + " : " + f.value, 1000, 150 + index * 20, 500, 200);
     });
+    drawTextInRect(ctx, " Nombre de plateformes : " + (game.entities.length - 1), 1000, 50, 500, 200);
+    drawTextInRect(ctx, "Distance : " + game.scrollX, 1000, 10, 500, 200);
 
 }
