@@ -2,12 +2,13 @@ const UP = "UP";
 const DOWN = "DOWN";
 const LEFT = "LEFT";
 const RIGHT = "RIGHT";
+const NONE = "NONE";
 
 function Game() {
     this.distance = 0;
     this.score = 0;
     this.scrollX = 0;
-    this.speed = 1;
+    this.speed = 0;
     this.gravityForce = 1.01;
     this.speedMultiplier = 1;
     this.entities = [];
@@ -26,6 +27,7 @@ function Game() {
         this.movePlayer(this.entities.find(e => e.isPlayer));
         this.gravity();
         this.applyForces();
+        this.animate();
         this.scroll();
     };
     this.gravity = function() {
@@ -38,6 +40,11 @@ function Game() {
                     }
                 }
             }
+        });
+    };
+    this.animate = function() {
+        this.entities.forEach((e1) => {
+            e1.update();
         });
     };
     this.scroll = function() {
@@ -194,8 +201,32 @@ function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = tr
     this.block = block;
     this.static = static;
     this.isPlayer = false;
+
+    // Animation
+    this.frames = [1, 2, 3, 4, 5, 6, 7, 8];
+    this.currentFrameIndex = 0;
+    this.update = function() {
+        this.currentFrameIndex += 0.1;
+        if (this.currentFrameIndex > this.frames.length) {
+            this.currentFrameIndex = 0;
+        }
+    }
+
     this.falling = function() {
         return this.forces.filter(f => f.direction == DOWN).length > 0;
+    };
+    this.getMainDirection = function() {
+        var forceMap = {
+            UP: 0,
+            LEFT: 0,
+            RIGHT: 0,
+            DOWN: 0,
+            NONE: 0.1
+        };
+        this.forces.forEach((f) => {
+            forceMap[f.direction] += f.value;
+        });
+        return Object.keys(forceMap).reduce((a, b) => forceMap[a] > forceMap[b] ? a : b);
     };
     this.forces = [];
 }
@@ -219,7 +250,7 @@ function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "for
 }
 
 function Player() {
-    Entity.call(this, 500, 0, 10, 20, true, false);
+    Entity.call(this, 500, 0, 30, 60, true, false);
     this.isPlayer = true;
     this.acceleration = 1.2;
 }
@@ -247,11 +278,19 @@ function drawBackground(ctx, width, height) {
 }
 
 function drawPlayer(ctx, player, game) {
-    ctx.fillStyle = "#ad2457";
+    var direction = player.getMainDirection();
+    var flipped = direction == LEFT;
     if (player.falling()) {
-        ctx.fillStyle = "#a8329e";
+        player.frames = [9];
+    } else {
+        if (direction == NONE) {
+            player.frames = [0];
+        } else {
+            player.frames = [1, 2, 3, 4, 5, 6, 7, 8];
+        }
     }
-    ctx.fillRect(player.x - game.scrollX, player.y, player.width, player.height);
+    drawSprite(ctx, document.getElementById("playerSpriteSheet"), player.x - game.scrollX, player.y, player.width, player.height, 14, 1, player.frames[Math.floor(player.currentFrameIndex)], flipped);
+
 }
 
 function drawEntity(ctx, entity, game, color = "#1e5210") {
@@ -267,5 +306,7 @@ function drawInterface(ctx, game) {
     });
     drawTextInRect(ctx, " Nombre de plateformes : " + (game.entities.length - 1), 1000, 50, 500, 200);
     drawTextInRect(ctx, "Distance : " + game.scrollX, 1000, 10, 500, 200);
+
+    drawTextInRect(ctx, "Direction : " + game.entities.find(e => e.isPlayer).getMainDirection(), 1000, 500, 500, 200);
 
 }
