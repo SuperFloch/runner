@@ -4,16 +4,18 @@ const LEFT = "LEFT";
 const RIGHT = "RIGHT";
 const NONE = "NONE";
 
-function Game() {
+function Game(width, height) {
+    this.width = width;
+    this.height = height;
     this.distance = 0;
     this.score = 0;
     this.scrollX = 0;
-    this.speed = 0;
+    this.speed = 1;
     this.gravityForce = 1.01;
     this.speedMultiplier = 1;
     this.entities = [];
     this.entities.push(new Player());
-    this.entities.push(new Platform(720, 600, 500, 20));
+    this.entities.push(new Platform(0, 600, this.width, 20));
     this.entities.push(new Platform(120, 580, 100, 20));
 
     this.keysPressed = {
@@ -50,12 +52,12 @@ function Game() {
     this.scroll = function() {
         this.scrollX += this.speed;
         this.entities = this.entities.filter(e => e.isPlayer || e.x + e.width > this.scrollX);
-        if (this.entities.length < 10) {
+        if (this.entities.length < 50) {
             this.spawnNewPlatforms();
         }
     };
     this.spawnNewPlatforms = function() {
-            this.entities.push(new Platform(Math.floor(Math.random() * 700 + 300) + this.scrollX, Math.floor(Math.random() * 200 + 400), 200, 20));
+            this.entities.push(new Platform(Math.floor(Math.random() * this.width + this.width) + this.scrollX, Math.floor(Math.random() * this.height), 200, 20));
         },
         this.applyForces = function() {
             this.entities.forEach((e1) => {
@@ -250,7 +252,7 @@ function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "for
 }
 
 function Player() {
-    Entity.call(this, 500, 0, 30, 60, true, false);
+    Entity.call(this, 500, 0, 30, 46, true, false);
     this.isPlayer = true;
     this.acceleration = 1.2;
 }

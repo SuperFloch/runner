@@ -2,7 +2,7 @@ var canvas = document.getElementById("canvas");
 canvas.height = getHeight();
 canvas.width = getWidth();
 
-var game = new Game();
+var game = new Game(getWidth(), getHeight());
 document.addEventListener("keydown", function(e) {
     game.keyPressed(e.key);
 });
