@@ -264,7 +264,7 @@ function Platform(x, y, width, height) {
 
 function draw(canvas, game) {
     var ctx = canvas.getContext("2d");
-    drawBackground(ctx, canvas.width, canvas.height);
+    drawBackground(ctx, game, canvas.width, canvas.height);
     drawPlayer(ctx, game.entities.find(e => e.isPlayer), game);
     drawInterface(ctx, game);
     game.entities.forEach((e, i) => {
@@ -274,9 +274,14 @@ function draw(canvas, game) {
     });
 }
 
-function drawBackground(ctx, width, height) {
-    ctx.fillStyle = "#8adbde";
-    ctx.fillRect(0, 0, width, height);
+function drawBackground(ctx, game, width, height) {
+    ctx.drawImage(document.getElementById("background"), 0, 0, width, height);
+    var layer1 = document.getElementById("backLayer_1");
+    var layer2 = document.getElementById("backLayer_2");
+    ctx.drawImage(layer1, 0 - (game.scrollX * 0.7 % width), 0, width, height);
+    ctx.drawImage(layer1, width - (game.scrollX * 0.7 % width), 0, width, height);
+    ctx.drawImage(layer2, 0 - (game.scrollX % width), 0, width, height);
+    ctx.drawImage(layer2, width - (game.scrollX % width), 0, width, height);
 }
 
 function drawPlayer(ctx, player, game) {
