@@ -10,13 +10,13 @@ function Game(width, height) {
     this.distance = 0;
     this.score = 0;
     this.scrollX = 0;
-    this.speed = 1;
+    this.currentScrollPanel = -1;
+    this.speed = 2;
     this.gravityForce = 1.01;
     this.speedMultiplier = 1;
     this.entities = [];
     this.entities.push(new Player());
-    this.entities.push(new Platform(0, 600, this.width, 20));
-    this.entities.push(new Platform(120, 580, 100, 20));
+    this.entities.push(new Platform(0, 600, this.width, 200));
 
     this.keysPressed = {
         left: false,
@@ -51,66 +51,71 @@ function Game(width, height) {
     };
     this.scroll = function() {
         this.scrollX += this.speed;
-        this.entities = this.entities.filter(e => e.isPlayer || e.x + e.width > this.scrollX);
-        if (this.entities.length < 50) {
+        this.entities = this.entities.filter(e => e.isPlayer || e.displayBox.x + e.displayBox.width > this.scrollX);
+        if (Math.floor(this.scrollX / this.width) > this.currentScrollPanel) {
             this.spawnNewPlatforms();
+            this.currentScrollPanel++;
+            this.speed *= 1.02;
         }
     };
     this.spawnNewPlatforms = function() {
-            this.entities.push(new Platform(Math.floor(Math.random() * this.width + this.width) + this.scrollX, Math.floor(Math.random() * this.height), 200, 20));
-        },
-        this.applyForces = function() {
-            this.entities.forEach((e1) => {
-                e1.forces.forEach((f) => {
-                    f.update();
-                    if (f.value > 0) {
-                        switch (f.direction) {
-                            case UP:
-                                e1.y -= f.value;
-                                if (this.collidesWithAnything(e1)) {
-                                    while (this.collidesWithAnything(e1)) {
-                                        e1.y += 1;
-                                    }
-                                    f.value = 0;
+        var tmp = Math.floor(Math.random() * templates.length);
+        templates[tmp].platforms.forEach((p) => {
+            this.entities.push(new Platform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height));
+        });
+    };
+    this.applyForces = function() {
+        this.entities.forEach((e1) => {
+            e1.forces.forEach((f) => {
+                f.update();
+                if (f.value > 0) {
+                    switch (f.direction) {
+                        case UP:
+                            e1.moveY(-f.value);
+                            if (this.collidesWithAnything(e1)) {
+                                while (this.collidesWithAnything(e1)) {
+                                    e1.moveY(1);
                                 }
-                                break;
-                            case DOWN:
-                                e1.y += f.value;
-                                if (this.collidesWithAnything(e1)) {
-                                    while (this.collidesWithAnything(e1)) {
-                                        e1.y -= 1;
-                                    }
-                                    f.value = 0;
+                                f.value = 0;
+                            }
+                            break;
+                        case DOWN:
+                            e1.moveY(f.value);
+                            if (this.collidesWithAnything(e1)) {
+                                while (this.collidesWithAnything(e1)) {
+                                    e1.moveY(-1);
                                 }
-                                break;
-                            case LEFT:
-                                e1.x -= f.value;
-                                if (this.collidesWithAnything(e1)) {
-                                    while (this.collidesWithAnything(e1)) {
-                                        e1.x += 1;
-                                    }
-                                    f.value = 0;
+                                f.value = 0;
+                            }
+                            break;
+                        case LEFT:
+                            e1.moveX(-f.value);
+                            if (this.collidesWithAnything(e1)) {
+                                while (this.collidesWithAnything(e1)) {
+                                    e1.moveX(1);
                                 }
-                                break;
-                            case RIGHT:
-                                e1.x += f.value;
-                                if (this.collidesWithAnything(e1)) {
-                                    while (this.collidesWithAnything(e1)) {
-                                        e1.x -= 1;
-                                    }
-                                    f.value = 0;
+                                f.value = 0;
+                            }
+                            break;
+                        case RIGHT:
+                            e1.moveX(f.value);
+                            if (this.collidesWithAnything(e1)) {
+                                while (this.collidesWithAnything(e1)) {
+                                    e1.moveX(-1);
                                 }
-                                break;
-                        }
+                                f.value = 0;
+                            }
+                            break;
                     }
-                });
-                e1.forces = e1.forces.filter(f => f.value > 0);
+                }
             });
-        };
+            e1.forces = e1.forces.filter(f => f.value > 0);
+        });
+    };
     this.collidesWithAnything = function(e1) {
         var blocked = false;
         this.entities.forEach((e2) => {
-            if (e1 != e2 && e2.block && intersects(e1, e2)) {
+            if (e1 != e2 && e2.block && intersects(e1.hitBox, e2.hitBox)) {
                 blocked = true;
             }
         });
@@ -118,13 +123,13 @@ function Game(width, height) {
     };
     this.isOnTopOfSomething = function(e1) {
         var blocked = false;
-        e1.y++;
+        e1.moveY(1);
         this.entities.forEach((e2) => {
-            if (e1 != e2 && e2.block && intersects(e1, e2)) {
+            if (e1 != e2 && e2.block && intersects(e1.hitBox, e2.hitBox)) {
                 blocked = true;
             }
         });
-        e1.y--;
+        e1.moveY(-1);
         return blocked;
     };
     this.movePlayer = function(player) {
@@ -147,7 +152,7 @@ function Game(width, height) {
         if (this.keysPressed.up && !player.falling()) {
             var jumpForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyUp");
             if (jumpForce == undefined) {
-                this.entities.find(e => e.isPlayer).forces.push(new Force(UP, 4, 0.98, 20, 1, "keyUp"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(UP, 7, 0.98, 20, 1, "keyUp"));
             } else {
                 jumpForce.value *= player.acceleration;
             }
@@ -196,13 +201,20 @@ function Game(width, height) {
 }
 
 function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = true) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
+    this.hitBox = new Rectangle(x, y, width, height);
+    this.displayBox = new Rectangle(x, y, width, height);
     this.block = block;
     this.static = static;
     this.isPlayer = false;
+
+    this.moveX = function(val) {
+        this.hitBox.x += val;
+        this.displayBox.x += val;
+    };
+    this.moveY = function(val) {
+        this.hitBox.y += val;
+        this.displayBox.y += val;
+    };
 
     // Animation
     this.frames = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -233,6 +245,15 @@ function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = tr
     this.forces = [];
 }
 
+function Rectangle(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.width = w;
+    this.height = h;
+}
+
+
+
 function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "force") {
     this.name = name;
     this.direction = direction;
@@ -252,7 +273,7 @@ function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "for
 }
 
 function Player() {
-    Entity.call(this, 500, 0, 30, 46, true, false);
+    Entity.call(this, 500, 0, 90, 138, true, false);
     this.isPlayer = true;
     this.acceleration = 1.2;
 }
@@ -262,9 +283,16 @@ function Platform(x, y, width, height) {
     this.static = true;
 }
 
+function PlatformGroupTemplate() {
+    this.platforms = [];
+    this.addPlatform = function(x, y, w, h) {
+        this.platforms.push(new Platform(x, y, w, h));
+    };
+}
+
 function draw(canvas, game) {
     var ctx = canvas.getContext("2d");
-    drawBackground(ctx, game, canvas.width, canvas.height);
+    drawBackground(ctx, game, game.width, game.height);
     drawPlayer(ctx, game.entities.find(e => e.isPlayer), game);
     drawInterface(ctx, game);
     game.entities.forEach((e, i) => {
@@ -296,13 +324,13 @@ function drawPlayer(ctx, player, game) {
             player.frames = [1, 2, 3, 4, 5, 6, 7, 8];
         }
     }
-    drawSprite(ctx, document.getElementById("playerSpriteSheet"), player.x - game.scrollX, player.y, player.width, player.height, 14, 1, player.frames[Math.floor(player.currentFrameIndex)], flipped);
+    drawSprite(ctx, document.getElementById("playerSpriteSheet"), player.displayBox.x - game.scrollX, player.displayBox.y, player.displayBox.width, player.displayBox.height, 14, 1, player.frames[Math.floor(player.currentFrameIndex)], flipped);
 
 }
 
 function drawEntity(ctx, entity, game, color = "#1e5210") {
     ctx.fillStyle = color;
-    ctx.fillRect(entity.x - game.scrollX, entity.y, entity.width, entity.height);
+    ctx.strokeRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
 }
 
 function drawInterface(ctx, game) {

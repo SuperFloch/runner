@@ -1,8 +1,12 @@
 var canvas = document.getElementById("canvas");
-canvas.height = getHeight();
-canvas.width = getWidth();
-
 var game = new Game(getWidth(), getHeight());
+
+window.addEventListener('resize', resizeCanvas);
+
+resizeCanvas();
+
+populateTemplates(getWidth(), getHeight());
+
 document.addEventListener("keydown", function(e) {
     game.keyPressed(e.key);
 });
@@ -33,4 +37,11 @@ function getHeight() {
         document.documentElement.offsetHeight,
         document.documentElement.clientHeight
     );
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    game.height = canvas.height;
+    game.width = canvas.width;
 }
