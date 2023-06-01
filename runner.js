@@ -12,7 +12,7 @@ function Game(width, height) {
     this.scrollX = 0;
     this.currentScrollPanel = -1;
     this.speed = 2;
-    this.gravityForce = 1.01;
+    this.gravityForce = 1.02;
     this.speedMultiplier = 1;
     this.entities = [];
     this.entities.push(new Player());
@@ -55,13 +55,27 @@ function Game(width, height) {
         if (Math.floor(this.scrollX / this.width) > this.currentScrollPanel) {
             this.spawnNewPlatforms();
             this.currentScrollPanel++;
-            this.speed *= 1.02;
+            this.speed *= this.speedMultiplier;
         }
     };
     this.spawnNewPlatforms = function() {
         var tmp = Math.floor(Math.random() * templates.length);
         templates[tmp].platforms.forEach((p) => {
-            this.entities.push(new Platform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height));
+            var clone = null;
+            console.log(p.constructor.name)
+            switch (p.constructor.name) {
+                case "Platform":
+                    clone = new Platform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
+                    break;
+                case "FallingPlatform":
+                    clone = new FallingPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height, p.delay);
+                    break;
+                case "BouncyPlatform":
+                    clone = new BouncyPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
+
+                    break;
+            }
+            this.entities.push(clone);
         });
     };
     this.applyForces = function() {
@@ -117,6 +131,7 @@ function Game(width, height) {
         this.entities.forEach((e2) => {
             if (e1 != e2 && e2.block && intersects(e1.hitBox, e2.hitBox)) {
                 blocked = true;
+                e2.collide(e1);
             }
         });
         return blocked;
@@ -127,6 +142,7 @@ function Game(width, height) {
         this.entities.forEach((e2) => {
             if (e1 != e2 && e2.block && intersects(e1.hitBox, e2.hitBox)) {
                 blocked = true;
+                e2.collide(e1);
             }
         });
         e1.moveY(-1);
@@ -216,6 +232,17 @@ function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = tr
         this.displayBox.y += val;
     };
 
+    this.setX = function(val) {
+        this.hitBox.x = val;
+        this.displayBox.x = val;
+    };
+    this.setY = function(val) {
+        this.hitBox.y = val;
+        this.displayBox.y = val;
+    };
+
+    this.collide = function(e2) {};
+
     // Animation
     this.frames = [1, 2, 3, 4, 5, 6, 7, 8];
     this.currentFrameIndex = 0;
@@ -283,6 +310,30 @@ function Platform(x, y, width, height) {
     this.static = true;
 }
 
+function FallingPlatform(x, y, w, h, delay) {
+    Platform.call(this, x, y, w, h);
+    this.delay = delay;
+    this.collide = function(e2) {
+        if (e2.isPlayer) {
+            setTimeout(() => { this.static = false; }, this.delay);
+        }
+    };
+}
+
+function BouncyPlatform(x, y, w, h) {
+    Platform.call(this, x, y, w, h);
+    this.collide = function(e2) {
+        if (e2.isPlayer) {
+            var bounceForce = e2.forces.find(f => f.name == "bounce");
+            if (bounceForce == undefined) {
+                e2.forces.push(new Force(UP, 7, 0.99, 50, 2.5, "bounce"));
+            } else {
+                bounceForce.value = 7;
+            }
+        }
+    }
+}
+
 function PlatformGroupTemplate() {
     this.platforms = [];
     this.addPlatform = function(x, y, w, h) {
@@ -293,12 +344,9 @@ function PlatformGroupTemplate() {
 function draw(canvas, game) {
     var ctx = canvas.getContext("2d");
     drawBackground(ctx, game, game.width, game.height);
-    drawPlayer(ctx, game.entities.find(e => e.isPlayer), game);
     drawInterface(ctx, game);
     game.entities.forEach((e, i) => {
-        if (i > 0) {
-            drawEntity(ctx, e, game);
-        }
+        drawEntity(ctx, e, game);
     });
 }
 
@@ -329,8 +377,22 @@ function drawPlayer(ctx, player, game) {
 }
 
 function drawEntity(ctx, entity, game, color = "#1e5210") {
-    ctx.fillStyle = color;
-    ctx.strokeRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
+    switch (entity.constructor.name) {
+        case "Platform":
+            ctx.fillStyle = "green";
+            ctx.fillRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
+            break;
+        case "FallingPlatform":
+            ctx.fillStyle = "yellow";
+            ctx.fillRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
+            break;
+        case "Player":
+            drawPlayer(ctx, entity, game);
+            break;
+        default:
+            ctx.fillStyle = "white";
+            ctx.fillRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
+    }
 }
 
 function drawInterface(ctx, game) {
