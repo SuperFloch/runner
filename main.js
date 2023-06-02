@@ -17,7 +17,7 @@ document.addEventListener("keyup", function(e) {
 setInterval(() => {
     game.update();
     draw(canvas, game)
-}, 10);
+}, 8);
 
 function getWidth() {
     return Math.max(

@@ -51,7 +51,7 @@ function Game(width, height) {
     };
     this.scroll = function() {
         this.scrollX += this.speed;
-        this.entities = this.entities.filter(e => e.isPlayer || e.displayBox.x + e.displayBox.width > this.scrollX);
+        this.entities = this.entities.filter(e => e.isPlayer || e.displayBox.x + e.displayBox.width > this.scrollX || e.displayBox.y < this.height || e.displayBox.y - e.displayBox.height > 0);
         if (Math.floor(this.scrollX / this.width) > this.currentScrollPanel) {
             this.spawnNewPlatforms();
             this.currentScrollPanel++;
@@ -62,7 +62,6 @@ function Game(width, height) {
         var tmp = Math.floor(Math.random() * templates.length);
         templates[tmp].platforms.forEach((p) => {
             var clone = null;
-            console.log(p.constructor.name)
             switch (p.constructor.name) {
                 case "Platform":
                     clone = new Platform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
@@ -72,7 +71,12 @@ function Game(width, height) {
                     break;
                 case "BouncyPlatform":
                     clone = new BouncyPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
-
+                    break;
+                case "Enemy":
+                    clone = new Enemy(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
+                    break;
+                case "LiftingPlatform":
+                    clone = new LiftingPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height, p.delay, p.direction);
                     break;
             }
             this.entities.push(clone);
@@ -265,7 +269,9 @@ function Entity(x = 0, y = 0, width = 10, height = 10, block = true, static = tr
             NONE: 0.1
         };
         this.forces.forEach((f) => {
-            forceMap[f.direction] += f.value;
+            if (f.animate) {
+                forceMap[f.direction] += f.value;
+            }
         });
         return Object.keys(forceMap).reduce((a, b) => forceMap[a] > forceMap[b] ? a : b);
     };
@@ -281,13 +287,14 @@ function Rectangle(x, y, w, h) {
 
 
 
-function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "force") {
+function Force(direction, value, inertia, maxValue, minValue = 0.02, name = "force", animate = true) {
     this.name = name;
     this.direction = direction;
     this.value = value;
     this.inertia = inertia;
     this.maxValue = maxValue;
     this.minValue = minValue;
+    this.animate = animate;
     this.update = function() {
         this.value *= this.inertia;
         if (this.value < this.minValue) {
@@ -305,6 +312,20 @@ function Player() {
     this.acceleration = 1.2;
 }
 
+function Enemy(x, y, w, h) {
+    Entity.call(this, x, y, w, h);
+    var newW = w * 1.2;
+    var newH = h * 1.2;
+    this.displayBox = new Rectangle(x - Math.abs(newW - w), y - Math.abs(newH - h), newW, newH);
+    this.static = false;
+    this.forces.push(new Force(LEFT, 1, 1, 1, 0.2, 'left'));
+    this.collide = function(e2) {
+        if (this.getMainDirection() == NONE) {
+            this.forces.push(new Force(RIGHT, 1, 1, 1, 0.2, 'right'));
+        }
+    };
+}
+
 function Platform(x, y, width, height) {
     Entity.call(this, x, y, width, height);
     this.static = true;
@@ -316,6 +337,24 @@ function FallingPlatform(x, y, w, h, delay) {
     this.collide = function(e2) {
         if (e2.isPlayer) {
             setTimeout(() => { this.static = false; }, this.delay);
+        }
+    };
+}
+
+function LiftingPlatform(x, y, w, h, delay, direction) {
+    Platform.call(this, x, y, w, h);
+    this.delay = delay;
+    this.direction = direction;
+    this.collide = function(e2) {
+        if (e2.isPlayer) {
+            if (this.forces.filter(f => f.direction == this.direction).length > 0 && e2.forces.filter(f => f.name == "add" + this.direction).length == 0) {
+                e2.forces.push(new Force(this.direction, 2, 1, 4, 1, "add" + this.direction, false));
+            }
+            setTimeout(() => {
+                if (this.forces.filter(f => f.direction == this.direction).length == 0) {
+                    this.forces.push(new Force(this.direction, 2, 1, 4, 1, this.direction));
+                }
+            }, this.delay);
         }
     };
 }
@@ -373,7 +412,21 @@ function drawPlayer(ctx, player, game) {
         }
     }
     drawSprite(ctx, document.getElementById("playerSpriteSheet"), player.displayBox.x - game.scrollX, player.displayBox.y, player.displayBox.width, player.displayBox.height, 14, 1, player.frames[Math.floor(player.currentFrameIndex)], flipped);
+}
 
+function drawEnemy(ctx, enemy, game) {
+    var direction = enemy.getMainDirection();
+    var flipped = direction == LEFT;
+    if (enemy.falling()) {
+        enemy.frames = [9];
+    } else {
+        if (direction == NONE) {
+            enemy.frames = [0];
+        } else {
+            enemy.frames = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        }
+    }
+    drawSprite(ctx, document.getElementById("enemySpriteSheet"), enemy.displayBox.x - game.scrollX, enemy.displayBox.y, enemy.displayBox.width, enemy.displayBox.height, 9, 1, enemy.frames[Math.floor(enemy.currentFrameIndex)], flipped);
 }
 
 function drawEntity(ctx, entity, game, color = "#1e5210") {
@@ -386,8 +439,15 @@ function drawEntity(ctx, entity, game, color = "#1e5210") {
             ctx.fillStyle = "yellow";
             ctx.fillRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
             break;
+        case "LiftingPlatform":
+            ctx.fillStyle = "red";
+            ctx.fillRect(entity.displayBox.x - game.scrollX, entity.displayBox.y, entity.displayBox.width, entity.displayBox.height);
+            break;
         case "Player":
             drawPlayer(ctx, entity, game);
+            break;
+        case "Enemy":
+            drawEnemy(ctx, entity, game);
             break;
         default:
             ctx.fillStyle = "white";

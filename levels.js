@@ -1,10 +1,14 @@
 var templates = [];
 
 function populateTemplates(width, height) {
+
+
     var t1 = new PlatformGroupTemplate();
     t1.addPlatform(getPercentToPixels(0, width), getPercentToPixels(80, height), getPercentToPixels(50, width), getPercentToPixels(20, height));
     t1.platforms.push(new BouncyPlatform(getPercentToPixels(50, width), getPercentToPixels(80, height), getPercentToPixels(50, width), getPercentToPixels(20, height)));
     templates.push(t1);
+
+
 
     t1 = new PlatformGroupTemplate();
     t1.addPlatform(getPercentToPixels(0, width), getPercentToPixels(80, height), getPercentToPixels(20, width), getPercentToPixels(20, height));
@@ -34,6 +38,20 @@ function populateTemplates(width, height) {
     t1.platforms.push(new FallingPlatform(getPercentToPixels(85, width), getPercentToPixels(75, height), getPercentToPixels(5, width), getPercentToPixels(5, height), 400));
     t1.platforms.push(new FallingPlatform(getPercentToPixels(90, width), getPercentToPixels(75, height), getPercentToPixels(5, width), getPercentToPixels(5, height), 400));
     t1.platforms.push(new FallingPlatform(getPercentToPixels(95, width), getPercentToPixels(75, height), getPercentToPixels(5, width), getPercentToPixels(5, height), 400));
+    templates.push(t1);
+
+
+    t1 = new PlatformGroupTemplate();
+    t1.addPlatform(getPercentToPixels(0, width), getPercentToPixels(80, height), getPercentToPixels(10, width), getPercentToPixels(20, height));
+    t1.platforms.push(new BouncyPlatform(getPercentToPixels(10, width), getPercentToPixels(80, height), getPercentToPixels(15, width), getPercentToPixels(10, height)));
+    t1.addPlatform(getPercentToPixels(25, width), getPercentToPixels(80, height), getPercentToPixels(25, width), getPercentToPixels(20, height));
+    t1.addPlatform(getPercentToPixels(60, width), getPercentToPixels(80, height), getPercentToPixels(40, width), getPercentToPixels(20, height));
+    t1.platforms.push(new Enemy(getPercentToPixels(60, width), getPercentToPixels(30, height), getPercentToPixels(18, width), getPercentToPixels(30, height)));
+    templates.push(t1);
+
+
+    t1 = new PlatformGroupTemplate();
+    t1.platforms.push(new LiftingPlatform(getPercentToPixels(0, width), getPercentToPixels(85, height), getPercentToPixels(15, width), getPercentToPixels(5, height), 400, "RIGHT"));
     templates.push(t1);
 
 }
