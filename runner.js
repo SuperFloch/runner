@@ -12,8 +12,9 @@ function Game(width, height) {
     this.scrollX = 0;
     this.currentScrollPanel = -1;
     this.speed = 2;
+    this.baseSpeed = 2;
     this.gravityForce = 1.02;
-    this.speedMultiplier = 1;
+    this.speedMultiplier = 0.01;
     this.entities = [];
     this.entities.push(new Player());
     this.entities.push(new Platform(0, 600, this.width, 200));
@@ -51,11 +52,12 @@ function Game(width, height) {
     };
     this.scroll = function() {
         this.scrollX += this.speed;
-        this.entities = this.entities.filter(e => e.isPlayer || e.displayBox.x + e.displayBox.width > this.scrollX || e.displayBox.y < this.height || e.displayBox.y - e.displayBox.height > 0);
+        this.entities = this.entities.filter(e => e.isPlayer || (e.displayBox.x + e.displayBox.width > this.scrollX && e.displayBox.y < this.height && e.displayBox.y - e.displayBox.height > 0));
         if (Math.floor(this.scrollX / this.width) > this.currentScrollPanel) {
             this.spawnNewPlatforms();
             this.currentScrollPanel++;
-            this.speed *= this.speedMultiplier;
+            this.speedMultiplier += 0.2;
+            this.speed = this.baseSpeed + this.speedMultiplier;
         }
     };
     this.spawnNewPlatforms = function() {
@@ -76,7 +78,7 @@ function Game(width, height) {
                     clone = new Enemy(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height);
                     break;
                 case "LiftingPlatform":
-                    clone = new LiftingPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height, p.delay, p.direction);
+                    clone = new LiftingPlatform(p.hitBox.x + this.width + this.scrollX, p.hitBox.y, p.hitBox.width, p.hitBox.height, p.delay, p.direction, this.speed + this.speedMultiplier);
                     break;
             }
             this.entities.push(clone);
@@ -156,7 +158,7 @@ function Game(width, height) {
         if (this.keysPressed.left) {
             var leftForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyLeft");
             if (leftForce == undefined) {
-                this.entities.find(e => e.isPlayer).forces.push(new Force(LEFT, 1, 0.98, 4, 0.2, "keyLeft"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(LEFT, 1, 0.98, 4 + this.speedMultiplier, 0.2, "keyLeft"));
             } else {
                 leftForce.value *= player.acceleration;
             }
@@ -164,7 +166,7 @@ function Game(width, height) {
         if (this.keysPressed.right) {
             var rightForce = this.entities.find(e => e.isPlayer).forces.find(f => f.name == "keyRight");
             if (rightForce == undefined) {
-                this.entities.find(e => e.isPlayer).forces.push(new Force(RIGHT, 1, 0.98, 4, 0.2, "keyRight"));
+                this.entities.find(e => e.isPlayer).forces.push(new Force(RIGHT, 1, 0.98, 4 + this.speedMultiplier, 0.2, "keyRight"));
             } else {
                 rightForce.value *= player.acceleration;
             }
@@ -341,18 +343,19 @@ function FallingPlatform(x, y, w, h, delay) {
     };
 }
 
-function LiftingPlatform(x, y, w, h, delay, direction) {
+function LiftingPlatform(x, y, w, h, delay, direction, speed = 4) {
     Platform.call(this, x, y, w, h);
     this.delay = delay;
     this.direction = direction;
+    this.speed = speed;
     this.collide = function(e2) {
         if (e2.isPlayer) {
             if (this.forces.filter(f => f.direction == this.direction).length > 0 && e2.forces.filter(f => f.name == "add" + this.direction).length == 0) {
-                e2.forces.push(new Force(this.direction, 2, 1, 4, 1, "add" + this.direction, false));
+                e2.forces.push(new Force(this.direction, this.speed, 0.9, this.speed, 1, "add" + this.direction, false));
             }
             setTimeout(() => {
                 if (this.forces.filter(f => f.direction == this.direction).length == 0) {
-                    this.forces.push(new Force(this.direction, 2, 1, 4, 1, this.direction));
+                    this.forces.push(new Force(this.direction, this.speed, 1, this.speed, 1, this.direction));
                 }
             }, this.delay);
         }
@@ -457,13 +460,15 @@ function drawEntity(ctx, entity, game, color = "#1e5210") {
 
 function drawInterface(ctx, game) {
     ctx.fillStyle = "black";
+    /*
     drawTextInRect(ctx, "Forces", 1000, 100, 500, 200);
     game.entities.find(e => e.isPlayer).forces.forEach((f, index) => {
         drawTextInRect(ctx, f.direction + " : " + f.value, 1000, 150 + index * 20, 500, 200);
     });
-    drawTextInRect(ctx, " Nombre de plateformes : " + (game.entities.length - 1), 1000, 50, 500, 200);
-    drawTextInRect(ctx, "Distance : " + game.scrollX, 1000, 10, 500, 200);
+    */
+    drawTextInRect(ctx, " Nombre de plateformes : " + (game.entities.length - 1), 400, 50, 500, 200);
+    drawTextInRect(ctx, "Distance : " + game.scrollX, 400, 10, 500, 200);
 
-    drawTextInRect(ctx, "Direction : " + game.entities.find(e => e.isPlayer).getMainDirection(), 1000, 500, 500, 200);
+    drawTextInRect(ctx, "Direction : " + game.entities.find(e => e.isPlayer).getMainDirection(), 400, 500, 500, 200);
 
 }

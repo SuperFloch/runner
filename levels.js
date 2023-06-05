@@ -51,7 +51,7 @@ function populateTemplates(width, height) {
 
 
     t1 = new PlatformGroupTemplate();
-    t1.platforms.push(new LiftingPlatform(getPercentToPixels(0, width), getPercentToPixels(85, height), getPercentToPixels(15, width), getPercentToPixels(5, height), 400, "RIGHT"));
+    t1.platforms.push(new LiftingPlatform(getPercentToPixels(0, width), getPercentToPixels(85, height), getPercentToPixels(15, width), getPercentToPixels(5, height), 100, "RIGHT"));
     templates.push(t1);
 
 }
